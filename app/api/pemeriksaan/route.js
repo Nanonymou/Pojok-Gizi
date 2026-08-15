@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { KANTIN_OPTIONS } from "../../../lib/calculations";
-import { buildPemeriksaanData } from "../../../lib/pemeriksaan-helpers";
+import { buildPemeriksaanData, findLockedNoRm } from "../../../lib/pemeriksaan-helpers";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const kantin = searchParams.get("kantin");
+  const status = searchParams.get("status");
   const perusahaanId = searchParams.get("perusahaanId");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
@@ -15,6 +16,7 @@ export async function GET(req) {
 
   const where = {};
   if (kantin && KANTIN_OPTIONS.includes(kantin)) where.kantin = kantin;
+  if (status) where.status = status;
   if (perusahaanId) where.perusahaanId = perusahaanId;
   if (from || to) {
     where.tanggal = {};
@@ -46,7 +48,17 @@ export async function GET(req) {
 export async function POST(req) {
   const body = await req.json().catch(() => ({}));
   try {
-    const data = buildPemeriksaanData(body);
+    const locked = await findLockedNoRm(prisma, {
+      namaKaryawan: body.namaKaryawan,
+      nikOrId: body.nikOrId,
+    });
+    if (locked && body.noRm && body.noRm !== locked) {
+      return NextResponse.json(
+        { error: `No. RM untuk karyawan ini sudah terdaftar sebagai ${locked} dan tidak bisa diubah.` },
+        { status: 400 }
+      );
+    }
+    const data = buildPemeriksaanData({ ...body, noRm: locked || body.noRm });
     const created = await prisma.pemeriksaanGizi.create({ data });
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
