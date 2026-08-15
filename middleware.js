@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
   "/api/master-perusahaan", // read-only GET used by public form dropdown
+  "/api/setup", // protected by its own SETUP_SECRET, not by session cookie
 ];
 
 function isPublic(pathname) {
