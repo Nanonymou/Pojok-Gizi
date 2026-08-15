@@ -77,7 +77,9 @@ model RequestGizi {
   kantin         String   // "Mahakam" | "Belayan" -> menentukan hari konsul
   hariKonsul     DateTime
   jamKonsul      String
-  noWhatsapp     String
+  // Nullable karena data lama (sebelum field ini ada) tidak punya nilai;
+  // untuk request BARU tetap wajib diisi lewat validasi di route POST-nya.
+  noWhatsapp     String?
   keluhan        String?
   status         String   @default("Baru") // Baru | Ditindaklanjuti | Selesai
   pemeriksaan    PemeriksaanGizi?
