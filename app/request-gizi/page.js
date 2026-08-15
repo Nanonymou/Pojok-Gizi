@@ -12,6 +12,25 @@ const emptyForm = {
   keluhan: "",
 };
 
+// Hanya slot 18:30–20:00, kelipatan 15 menit, supaya user tidak bisa memilih
+// di luar rentang yang diizinkan (native <input type="time"> tidak benar-benar
+// mengunci pilihan di beberapa browser walau sudah diberi min/max).
+function buildTimeSlots() {
+  const slots = [];
+  let h = 18;
+  let m = 30;
+  while (h < 20 || (h === 20 && m === 0)) {
+    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    m += 15;
+    if (m >= 60) {
+      m = 0;
+      h += 1;
+    }
+  }
+  return slots;
+}
+const TIME_SLOTS = buildTimeSlots();
+
 export default function RequestGiziPage() {
   const [perusahaanList, setPerusahaanList] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -61,7 +80,13 @@ export default function RequestGiziPage() {
       }}
     >
       <header className="grid grid-cols-3 items-center px-4 py-4 max-w-2xl mx-auto">
-        <div />
+        <div className="flex items-center">
+          <img
+            src="https://i.postimg.cc/WpdjYB8N/Whats-App-Image-2026-08-14-at-11-03-08.png"
+            alt="Logo Aden"
+            className="h-10 w-auto max-w-[140px] object-contain"
+          />
+        </div>
         <div
           className="font-bold tracking-wide text-center"
           style={{ color: "var(--primary)" }}
@@ -144,15 +169,19 @@ export default function RequestGiziPage() {
               />
             </Field>
             <Field label="Jam Konsul (18:30–20:00)">
-              <input
-                type="time"
-                min="18:30"
-                max="20:00"
+              <select
                 className="input-field"
                 value={form.jamKonsul}
                 onChange={(e) => update("jamKonsul", e.target.value)}
                 required
-              />
+              >
+                <option value="">Pilih Jam</option>
+                {TIME_SLOTS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Keluhan atau Kondisi">
               <textarea
@@ -187,3 +216,4 @@ function Field({ label, children }) {
     </div>
   );
 }
+
