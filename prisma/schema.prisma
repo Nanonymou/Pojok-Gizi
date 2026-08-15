@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("nutrisionist")
+  createdAt    DateTime @default(now())
+}
+
+model MasterPerusahaan {
+  id            String   @id @default(cuid())
+  nama          String   @unique
+  aktif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  pemeriksaan   PemeriksaanGizi[]
+  requestGizi   RequestGizi[]
+}
+
+model PemeriksaanGizi {
+  id                 String   @id @default(cuid())
+  tanggal            DateTime
+  noRm               String
+  namaKaryawan       String
+  nikOrId            String
+  perusahaanId       String
+  perusahaan         MasterPerusahaan @relation(fields: [perusahaanId], references: [id])
+  kantin             String   // "Mahakam" | "Belayan"
+  jenisKelamin       String   // "L" | "P"
+  usia               Int
+  beratBadan         Float
+  tinggiBadan        Float
+  persenFat          Float
+  kategoriFatGender  String
+  keteranganFat      String
+  vicFat             Float
+  keteranganVicFat   String
+  kalori             Float?
+  bmi                Float
+  keteranganBmi      String
+  tindakLanjut       String?
+  createdBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([tanggal])
+  @@index([kantin])
+  @@index([perusahaanId])
+}
+
+model RequestGizi {
+  id             String   @id @default(cuid())
+  nama           String
+  umur           Int
+  nikOrId        String
+  perusahaanId   String
+  perusahaan     MasterPerusahaan @relation(fields: [perusahaanId], references: [id])
+  hariKonsul     DateTime
+  jamKonsul      String
+  keluhan        String?
+  status         String   @default("Baru") // Baru | Ditindaklanjuti | Selesai
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
