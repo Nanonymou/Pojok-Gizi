@@ -40,12 +40,14 @@ export default function DashboardPage() {
     try {
       const [dashRes, reqRes] = await Promise.all([
         fetch(`/api/dashboard?${params.toString()}`).then(async (r) => {
-          if (!r.ok) throw new Error(`Gagal memuat dashboard (${r.status})`);
-          return r.json();
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.detail || d.error || `Gagal memuat dashboard (${r.status})`);
+          return d;
         }),
         fetch(`/api/request-gizi`).then(async (r) => {
-          if (!r.ok) throw new Error(`Gagal memuat request gizi (${r.status})`);
-          return r.json();
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.detail || d.error || `Gagal memuat request gizi (${r.status})`);
+          return d;
         }),
       ]);
       setData(dashRes);
