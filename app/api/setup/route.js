@@ -73,24 +73,27 @@ async function handle(req) {
       CREATE TABLE IF NOT EXISTS "PemeriksaanGizi" (
         "id" TEXT PRIMARY KEY,
         "tanggal" TIMESTAMP(3) NOT NULL,
-        "noRm" TEXT NOT NULL,
+        "noRm" TEXT,
         "namaKaryawan" TEXT NOT NULL,
         "nikOrId" TEXT NOT NULL,
         "perusahaanId" TEXT NOT NULL REFERENCES "MasterPerusahaan"("id"),
         "kantin" TEXT NOT NULL,
-        "jenisKelamin" TEXT NOT NULL,
+        "noWhatsapp" TEXT,
+        "jenisKelamin" TEXT,
         "usia" INTEGER NOT NULL,
-        "beratBadan" DOUBLE PRECISION NOT NULL,
-        "tinggiBadan" DOUBLE PRECISION NOT NULL,
-        "persenFat" DOUBLE PRECISION NOT NULL,
-        "kategoriFatGender" TEXT NOT NULL,
-        "keteranganFat" TEXT NOT NULL,
-        "vicFat" DOUBLE PRECISION NOT NULL,
-        "keteranganVicFat" TEXT NOT NULL,
+        "beratBadan" DOUBLE PRECISION,
+        "tinggiBadan" DOUBLE PRECISION,
+        "persenFat" DOUBLE PRECISION,
+        "kategoriFatGender" TEXT,
+        "keteranganFat" TEXT,
+        "vicFat" DOUBLE PRECISION,
+        "keteranganVicFat" TEXT,
         "kalori" DOUBLE PRECISION,
-        "bmi" DOUBLE PRECISION NOT NULL,
-        "keteranganBmi" TEXT NOT NULL,
+        "bmi" DOUBLE PRECISION,
+        "keteranganBmi" TEXT,
         "tindakLanjut" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'Menunggu Pemeriksaan',
+        "requestGiziId" TEXT UNIQUE,
         "createdBy" TEXT,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -103,13 +106,60 @@ async function handle(req) {
         "umur" INTEGER NOT NULL,
         "nikOrId" TEXT NOT NULL,
         "perusahaanId" TEXT NOT NULL REFERENCES "MasterPerusahaan"("id"),
+        "kantin" TEXT NOT NULL,
         "hariKonsul" TIMESTAMP(3) NOT NULL,
         "jamKonsul" TEXT NOT NULL,
+        "noWhatsapp" TEXT,
         "keluhan" TEXT,
         "status" TEXT NOT NULL DEFAULT 'Baru',
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // --- Migrasi untuk DB yang sudah berjalan sebelum perubahan ini ---
+    // Tabel di atas cuma dibuat kalau BELUM ada. Kalau sudah ada (kasus kamu,
+    // karena sudah dipakai), kolom baru ditambahkan lewat ALTER TABLE di
+    // bawah ini. Aman dipanggil berkali-kali (pakai IF NOT EXISTS / DROP NOT NULL).
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "PemeriksaanGizi"
+        ALTER COLUMN "noRm" DROP NOT NULL,
+        ALTER COLUMN "jenisKelamin" DROP NOT NULL,
+        ALTER COLUMN "beratBadan" DROP NOT NULL,
+        ALTER COLUMN "tinggiBadan" DROP NOT NULL,
+        ALTER COLUMN "persenFat" DROP NOT NULL,
+        ALTER COLUMN "kategoriFatGender" DROP NOT NULL,
+        ALTER COLUMN "keteranganFat" DROP NOT NULL,
+        ALTER COLUMN "vicFat" DROP NOT NULL,
+        ALTER COLUMN "keteranganVicFat" DROP NOT NULL,
+        ALTER COLUMN "bmi" DROP NOT NULL,
+        ALTER COLUMN "keteranganBmi" DROP NOT NULL,
+        ADD COLUMN IF NOT EXISTS "noWhatsapp" TEXT,
+        ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'Menunggu Pemeriksaan',
+        ADD COLUMN IF NOT EXISTS "requestGiziId" TEXT;
+    `);
+    // Constraint UNIQUE untuk requestGiziId ditambahkan terpisah supaya tidak
+    // gagal kalau kolomnya baru saja dibuat di statement sebelumnya.
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'PemeriksaanGizi_requestGiziId_key'
+        ) THEN
+          ALTER TABLE "PemeriksaanGizi" ADD CONSTRAINT "PemeriksaanGizi_requestGiziId_key" UNIQUE ("requestGiziId");
+        END IF;
+      END $$;
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "RequestGizi"
+        ADD COLUMN IF NOT EXISTS "kantin" TEXT NOT NULL DEFAULT 'Mahakam',
+        ADD COLUMN IF NOT EXISTS "noWhatsapp" TEXT;
+    `);
+    // Kolom "kantin" di atas dikasih DEFAULT sementara ('Mahakam') supaya ALTER
+    // tidak gagal pada baris lama yang belum punya nilai. Setelah kolom ada,
+    // default dilepas lagi karena request baru selalu mengirim kantin sendiri.
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "RequestGizi" ALTER COLUMN "kantin" DROP DEFAULT;
     `);
 
     const user = await prisma.user.upsert({
