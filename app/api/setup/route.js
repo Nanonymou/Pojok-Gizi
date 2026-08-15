@@ -118,15 +118,33 @@ async function handle(req) {
       create: { username, passwordHash, role: "nutrisionist" },
     });
 
-    // Sekalian pastikan master perusahaan contoh ada (aman dipanggil berkali-kali).
-    const perusahaanList = ["PT Contoh Sejahtera", "PT Mahakam Energi", "PT Belayan Resources"];
+    // Daftar perusahaan bisa diatur lewat parameter ?perusahaan=Nama1,Nama2,Nama3
+    // Kalau tidak diisi, pakai daftar contoh default (aman dipanggil berkali-kali).
+    const perusahaanParam = searchParams.get("perusahaan");
+    const perusahaanList = perusahaanParam
+      ? perusahaanParam.split(",").map((s) => s.trim()).filter(Boolean)
+      : ["PT Contoh Sejahtera", "PT Mahakam Energi", "PT Belayan Resources"];
+
     for (const nama of perusahaanList) {
-      await prisma.masterPerusahaan.upsert({ where: { nama }, update: {}, create: { nama } });
+      await prisma.masterPerusahaan.upsert({
+        where: { nama },
+        update: { aktif: true },
+        create: { nama },
+      });
+    }
+
+    // ?resetPerusahaan=1 -> nonaktifkan perusahaan lama yang TIDAK ada di daftar
+    // baru ini (tidak dihapus permanen, hanya disembunyikan dari dropdown).
+    if (searchParams.get("resetPerusahaan") === "1") {
+      await prisma.masterPerusahaan.updateMany({
+        where: { nama: { notIn: perusahaanList } },
+        data: { aktif: false },
+      });
     }
 
     return NextResponse.json({
       ok: true,
-      message: `Akun Nutrisionist "${user.username}" berhasil dibuat/direset. Sekarang bisa login dengan username & password dari SEED_NUTRISIONIST_USERNAME/PASSWORD saat ini.`,
+      message: `Akun Nutrisionist "${user.username}" berhasil dibuat/direset. Daftar perusahaan aktif: ${perusahaanList.join(", ")}.`,
     });
   } catch (e) {
     // Tampilkan pesan error asli agar mudah didiagnosis (mis. tabel belum ada,
