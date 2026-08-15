@@ -48,20 +48,99 @@ async function handle(req) {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.upsert({
-    where: { username },
-    update: { passwordHash },
-    create: { username, passwordHash, role: "nutrisionist" },
-  });
+  try {
+    // Buat tabel otomatis kalau belum ada (aman dipanggil berkali-kali, tidak
+    // menghapus data yang sudah ada). Ini menggantikan kebutuhan menjalankan
+    // `npx prisma db push` secara manual dari komputer lokal.
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "User" (
+        "id" TEXT PRIMARY KEY,
+        "username" TEXT UNIQUE NOT NULL,
+        "passwordHash" TEXT NOT NULL,
+        "role" TEXT NOT NULL DEFAULT 'nutrisionist',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "MasterPerusahaan" (
+        "id" TEXT PRIMARY KEY,
+        "nama" TEXT UNIQUE NOT NULL,
+        "aktif" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PemeriksaanGizi" (
+        "id" TEXT PRIMARY KEY,
+        "tanggal" TIMESTAMP(3) NOT NULL,
+        "noRm" TEXT NOT NULL,
+        "namaKaryawan" TEXT NOT NULL,
+        "nikOrId" TEXT NOT NULL,
+        "perusahaanId" TEXT NOT NULL REFERENCES "MasterPerusahaan"("id"),
+        "kantin" TEXT NOT NULL,
+        "jenisKelamin" TEXT NOT NULL,
+        "usia" INTEGER NOT NULL,
+        "beratBadan" DOUBLE PRECISION NOT NULL,
+        "tinggiBadan" DOUBLE PRECISION NOT NULL,
+        "persenFat" DOUBLE PRECISION NOT NULL,
+        "kategoriFatGender" TEXT NOT NULL,
+        "keteranganFat" TEXT NOT NULL,
+        "vicFat" DOUBLE PRECISION NOT NULL,
+        "keteranganVicFat" TEXT NOT NULL,
+        "kalori" DOUBLE PRECISION,
+        "bmi" DOUBLE PRECISION NOT NULL,
+        "keteranganBmi" TEXT NOT NULL,
+        "tindakLanjut" TEXT,
+        "createdBy" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "RequestGizi" (
+        "id" TEXT PRIMARY KEY,
+        "nama" TEXT NOT NULL,
+        "umur" INTEGER NOT NULL,
+        "nikOrId" TEXT NOT NULL,
+        "perusahaanId" TEXT NOT NULL REFERENCES "MasterPerusahaan"("id"),
+        "hariKonsul" TIMESTAMP(3) NOT NULL,
+        "jamKonsul" TEXT NOT NULL,
+        "keluhan" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'Baru',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-  // Sekalian pastikan master perusahaan contoh ada (aman dipanggil berkali-kali).
-  const perusahaanList = ["PT BUMA"];
-  for (const nama of perusahaanList) {
-    await prisma.masterPerusahaan.upsert({ where: { nama }, update: {}, create: { nama } });
+    const user = await prisma.user.upsert({
+      where: { username },
+      update: { passwordHash },
+      create: { username, passwordHash, role: "nutrisionist" },
+    });
+
+    // Sekalian pastikan master perusahaan contoh ada (aman dipanggil berkali-kali).
+    const perusahaanList = ["PT Contoh Sejahtera", "PT Mahakam Energi", "PT Belayan Resources"];
+    for (const nama of perusahaanList) {
+      await prisma.masterPerusahaan.upsert({ where: { nama }, update: {}, create: { nama } });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: `Akun Nutrisionist "${user.username}" berhasil dibuat/direset. Sekarang bisa login dengan username & password dari SEED_NUTRISIONIST_USERNAME/PASSWORD saat ini.`,
+    });
+  } catch (e) {
+    // Tampilkan pesan error asli agar mudah didiagnosis (mis. tabel belum ada,
+    // DATABASE_URL salah, dsb). Endpoint ini sudah dilindungi SETUP_SECRET.
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Gagal menyimpan ke database.",
+        detail: e.message,
+        hint: e.message?.includes("does not exist")
+          ? "Tabel database belum dibuat. Jalankan `npx prisma db push` dari komputer lokal dengan DATABASE_URL yang sama dengan di Vercel."
+          : "Cek DATABASE_URL di Vercel sudah benar (termasuk ?sslmode=require untuk Neon).",
+      },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({
-    ok: true,
-    message: `Akun Nutrisionist "${user.username}" berhasil dibuat/direset. Sekarang bisa login dengan username & password dari SEED_NUTRISIONIST_USERNAME/PASSWORD saat ini.`,
-  });
 }
