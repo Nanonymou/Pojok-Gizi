@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     fetch("/api/master-perusahaan")
@@ -29,19 +30,31 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     const params = new URLSearchParams();
     if (filters.kantin) params.set("kantin", filters.kantin);
     if (filters.perusahaanId) params.set("perusahaanId", filters.perusahaanId);
     if (filters.from) params.set("from", filters.from);
     if (filters.to) params.set("to", filters.to);
 
-    const [dashRes, reqRes] = await Promise.all([
-      fetch(`/api/dashboard?${params.toString()}`).then((r) => r.json()),
-      fetch(`/api/request-gizi`).then((r) => r.json()),
-    ]);
-    setData(dashRes);
-    setRequests(reqRes.items || []);
-    setLoading(false);
+    try {
+      const [dashRes, reqRes] = await Promise.all([
+        fetch(`/api/dashboard?${params.toString()}`).then(async (r) => {
+          if (!r.ok) throw new Error(`Gagal memuat dashboard (${r.status})`);
+          return r.json();
+        }),
+        fetch(`/api/request-gizi`).then(async (r) => {
+          if (!r.ok) throw new Error(`Gagal memuat request gizi (${r.status})`);
+          return r.json();
+        }),
+      ]);
+      setData(dashRes);
+      setRequests(reqRes.items || []);
+    } catch (e) {
+      setLoadError(e.message || "Gagal memuat data. Coba refresh halaman.");
+    } finally {
+      setLoading(false);
+    }
   }, [filters]);
 
   useEffect(() => {
@@ -70,7 +83,11 @@ export default function DashboardPage() {
 
       {loading || !data ? (
         <div className="mt-8" style={{ color: "var(--muted)" }}>
-          Memuat data...
+          {loadError ? (
+            <span style={{ color: "var(--danger)" }}>{loadError}</span>
+          ) : (
+            "Memuat data..."
+          )}
         </div>
       ) : (
         <>
