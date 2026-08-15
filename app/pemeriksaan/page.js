@@ -67,6 +67,7 @@ const emptyForm = {
   nikOrId: "",
   perusahaanId: "",
   kantin: "",
+  noWhatsapp: "",
   jenisKelamin: "",
   usia: "",
   beratBadan: "",
@@ -84,6 +85,7 @@ export default function PemeriksaanPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lockedNoRm, setLockedNoRm] = useState(null);
   const range = useMemo(monthRange, []);
 
   useEffect(() => {
@@ -91,6 +93,30 @@ export default function PemeriksaanPage() {
       .then((r) => r.json())
       .then((d) => setPerusahaanList(d.items || []));
   }, []);
+
+  // Kalau nama + NIK/ID cocok dengan karyawan yang sudah punya No. RM
+  // terdaftar, kunci field No. RM supaya tidak terjadi duplikasi.
+  useEffect(() => {
+    if (!form.namaKaryawan || !form.nikOrId) {
+      setLockedNoRm(null);
+      return;
+    }
+    const params = new URLSearchParams({ nama: form.namaKaryawan, nikOrId: form.nikOrId });
+    const t = setTimeout(() => {
+      fetch(`/api/pemeriksaan/lookup-rm?${params.toString()}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.locked && d.noRm) {
+            setLockedNoRm(d.noRm);
+            setForm((f) => ({ ...f, noRm: d.noRm }));
+          } else {
+            setLockedNoRm(null);
+          }
+        })
+        .catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [form.namaKaryawan, form.nikOrId]);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -134,8 +160,15 @@ export default function PemeriksaanPage() {
                 required
               />
             </Field>
-            <Field label="No. Rekam Medis">
-              <input className="input-field" value={form.noRm} onChange={(e) => update("noRm", e.target.value)} required />
+            <Field label={`No. Rekam Medis${lockedNoRm ? " (terkunci)" : ""}`}>
+              <input
+                className="input-field"
+                value={form.noRm}
+                onChange={(e) => update("noRm", e.target.value)}
+                readOnly={Boolean(lockedNoRm)}
+                style={lockedNoRm ? { background: "var(--surface-hover)" } : undefined}
+                required
+              />
             </Field>
             <Field label="Nama Karyawan">
               <input
@@ -184,6 +217,15 @@ export default function PemeriksaanPage() {
             </Field>
             <Field label="Usia">
               <input type="number" className="input-field" value={form.usia} onChange={(e) => update("usia", e.target.value)} required />
+            </Field>
+            <Field label="No. WhatsApp">
+              <input
+                type="tel"
+                className="input-field"
+                placeholder="08xxxxxxxxxx"
+                value={form.noWhatsapp}
+                onChange={(e) => update("noWhatsapp", e.target.value)}
+              />
             </Field>
           </Grid>
         </Section>
