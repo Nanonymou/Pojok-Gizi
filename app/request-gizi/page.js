@@ -60,11 +60,20 @@ export default function RequestGiziPage() {
           "radial-gradient(circle at 80% 0%, var(--primary-soft), transparent 45%), var(--background)",
       }}
     >
-      <header className="flex items-center justify-between px-4 py-4 max-w-2xl mx-auto">
-        <div className="font-bold tracking-wide" style={{ color: "var(--primary)" }}>
+      <header className="grid grid-cols-3 items-center px-4 py-4 max-w-2xl mx-auto">
+        <div />
+        <div
+          className="font-bold tracking-wide text-center"
+          style={{ color: "var(--primary)" }}
+        >
           POJOK GIZI BY ADEN
         </div>
-        <ThemeToggle />
+        <div className="flex items-center justify-end gap-2">
+          <a href="/login" className="btn-ghost text-sm" title="Login Nutrisionist">
+            Login
+          </a>
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 pb-16">
