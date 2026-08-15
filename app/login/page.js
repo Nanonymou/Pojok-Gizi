@@ -35,6 +35,11 @@ export default function LoginPage() {
           "radial-gradient(circle at 20% 20%, var(--primary-soft), transparent 40%), var(--background)",
       }}
     >
+      <div className="absolute top-4 left-4">
+        <a href="/request-gizi" className="btn-ghost text-sm">
+          ← Kembali
+        </a>
+      </div>
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
