@@ -7,10 +7,37 @@ const emptyForm = {
   umur: "",
   nikOrId: "",
   perusahaanId: "",
-  hariKonsul: "",
+  kantin: "",
   jamKonsul: "",
+  noWhatsapp: "",
   keluhan: "",
 };
+
+// Hari konsul dikunci per kantin: Mahakam hanya Minggu, Belayan hanya Senin.
+const KANTIN_HARI = {
+  Mahakam: { label: "Minggu", dayOfWeek: 0 },
+  Belayan: { label: "Senin", dayOfWeek: 1 },
+};
+
+function nextDateForKantin(kantin) {
+  const hari = KANTIN_HARI[kantin];
+  if (!hari) return null;
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = (hari.dayOfWeek - base.getDay() + 7) % 7;
+  base.setDate(base.getDate() + diff);
+  return base;
+}
+
+function formatTanggalId(date) {
+  if (!date) return "";
+  return date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function isWhatsappValid(nomor) {
+  if (!nomor) return false;
+  return /^(\+?62|0)8[0-9]{7,12}$/.test(String(nomor).trim());
+}
 
 // Hanya slot 18:30–20:00, kelipatan 15 menit, supaya user tidak bisa memilih
 // di luar rentang yang diizinkan (native <input type="time"> tidak benar-benar
@@ -45,8 +72,16 @@ export default function RequestGiziPage() {
       .catch(() => {});
   }, []);
 
+  const tanggalKonsul = nextDateForKantin(form.kantin);
+
   const isComplete =
-    form.nama && form.umur && form.nikOrId && form.perusahaanId && form.hariKonsul && form.jamKonsul;
+    form.nama &&
+    form.umur &&
+    form.nikOrId &&
+    form.perusahaanId &&
+    form.kantin &&
+    form.jamKonsul &&
+    isWhatsappValid(form.noWhatsapp);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -159,14 +194,43 @@ export default function RequestGiziPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Hari Konsul">
-              <input
-                type="date"
+            <Field label="Kantin">
+              <select
                 className="input-field"
-                value={form.hariKonsul}
-                onChange={(e) => update("hariKonsul", e.target.value)}
+                value={form.kantin}
+                onChange={(e) => update("kantin", e.target.value)}
+                required
+              >
+                <option value="">Pilih Kantin</option>
+                <option value="Mahakam">Mahakam</option>
+                <option value="Belayan">Belayan</option>
+              </select>
+            </Field>
+            {form.kantin && (
+              <Field label="Hari & Tanggal Konsul">
+                <div className="input-field" style={{ background: "var(--surface-hover)", color: "var(--primary)", fontWeight: 600 }}>
+                  {KANTIN_HARI[form.kantin].label} · {formatTanggalId(tanggalKonsul)}
+                </div>
+                <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+                  Kantin {form.kantin} hanya melayani konsultasi hari {KANTIN_HARI[form.kantin].label}, jadi tanggal
+                  otomatis mengikuti hari terdekat.
+                </p>
+              </Field>
+            )}
+            <Field label="No. WhatsApp">
+              <input
+                type="tel"
+                className="input-field"
+                placeholder="08xxxxxxxxxx"
+                value={form.noWhatsapp}
+                onChange={(e) => update("noWhatsapp", e.target.value)}
                 required
               />
+              {form.noWhatsapp && !isWhatsappValid(form.noWhatsapp) && (
+                <p className="text-xs mt-1" style={{ color: "var(--danger)" }}>
+                  Format nomor WhatsApp belum valid, contoh: 08123456789
+                </p>
+              )}
             </Field>
             <Field label="Jam Konsul (18:30–20:00)">
               <select
