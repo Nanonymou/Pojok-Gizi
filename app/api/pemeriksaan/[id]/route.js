@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
-import { buildPemeriksaanData } from "../../../../lib/pemeriksaan-helpers";
+import { buildPemeriksaanData, findLockedNoRm } from "../../../../lib/pemeriksaan-helpers";
 
 export async function GET(_req, { params }) {
   const item = await prisma.pemeriksaanGizi.findUnique({
@@ -14,7 +14,18 @@ export async function GET(_req, { params }) {
 export async function PUT(req, { params }) {
   const body = await req.json().catch(() => ({}));
   try {
-    const data = buildPemeriksaanData(body);
+    const locked = await findLockedNoRm(prisma, {
+      namaKaryawan: body.namaKaryawan,
+      nikOrId: body.nikOrId,
+      excludeId: params.id,
+    });
+    if (locked && body.noRm && body.noRm !== locked) {
+      return NextResponse.json(
+        { error: `No. RM untuk karyawan ini sudah terdaftar sebagai ${locked} dan tidak bisa diubah.` },
+        { status: 400 }
+      );
+    }
+    const data = buildPemeriksaanData({ ...body, noRm: locked || body.noRm });
     const updated = await prisma.pemeriksaanGizi.update({
       where: { id: params.id },
       data,
