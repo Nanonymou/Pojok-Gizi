@@ -5,17 +5,24 @@ import { buildInitialPemeriksaanFromRequest } from "../../../lib/pemeriksaan-hel
 
 // GET: dipakai oleh dashboard Nutrisionist (dilindungi middleware) untuk daftar request.
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const where = {};
-  if (status) where.status = status;
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const where = {};
+    if (status) where.status = status;
 
-  const items = await prisma.requestGizi.findMany({
-    where,
-    include: { perusahaan: true },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json({ items });
+    const items = await prisma.requestGizi.findMany({
+      where,
+      include: { perusahaan: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({ items });
+  } catch (e) {
+    return NextResponse.json(
+      { error: "Gagal memuat data request gizi.", detail: e.message },
+      { status: 500 }
+    );
+  }
 }
 
 // POST: endpoint publik, tanpa login. Middleware mengizinkan path ini.
@@ -39,32 +46,39 @@ export async function POST(req) {
   // terdekat, Belayan -> Senin terdekat), bukan input bebas dari user.
   const hariKonsul = nextDateForKantin(kantin);
 
-  const created = await prisma.$transaction(async (tx) => {
-    const request = await tx.requestGizi.create({
-      data: {
-        nama,
-        umur: Number(umur),
-        nikOrId,
-        perusahaanId,
-        kantin,
-        hariKonsul,
-        jamKonsul,
-        noWhatsapp: noWhatsapp.trim(),
-        keluhan: keluhan || null,
-        status: "Baru",
-      },
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const request = await tx.requestGizi.create({
+        data: {
+          nama,
+          umur: Number(umur),
+          nikOrId,
+          perusahaanId,
+          kantin,
+          hariKonsul,
+          jamKonsul,
+          noWhatsapp: noWhatsapp.trim(),
+          keluhan: keluhan || null,
+          status: "Baru",
+        },
+      });
+
+      // Setiap request konsultasi otomatis tercatat sebagai entri di data
+      // konsultasi (PemeriksaanGizi) dengan status "Menunggu Pemeriksaan".
+      await tx.pemeriksaanGizi.create({
+        data: buildInitialPemeriksaanFromRequest(request),
+      });
+
+      return request;
     });
 
-    // Setiap request konsultasi otomatis tercatat sebagai entri di data
-    // konsultasi (PemeriksaanGizi) dengan status "Menunggu Pemeriksaan".
-    await tx.pemeriksaanGizi.create({
-      data: buildInitialPemeriksaanFromRequest(request),
-    });
-
-    return request;
-  });
-
-  return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(created, { status: 201 });
+  } catch (e) {
+    return NextResponse.json(
+      { error: "Gagal menyimpan request. Coba lagi atau hubungi admin.", detail: e.message },
+      { status: 500 }
+    );
+  }
 }
 
 function err(message) {
