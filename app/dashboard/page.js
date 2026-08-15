@@ -105,8 +105,10 @@ export default function DashboardPage() {
                   <Th>Nama</Th>
                   <Th>Umur</Th>
                   <Th>Perusahaan</Th>
+                  <Th>Kantin</Th>
                   <Th>Hari</Th>
                   <Th>Jam</Th>
+                  <Th>No. WhatsApp</Th>
                   <Th>Keluhan</Th>
                   <Th>Status</Th>
                 </tr>
@@ -117,8 +119,10 @@ export default function DashboardPage() {
                     <Td>{r.nama}</Td>
                     <Td>{r.umur}</Td>
                     <Td>{r.perusahaan?.nama}</Td>
+                    <Td>{r.kantin}</Td>
                     <Td>{new Date(r.hariKonsul).toLocaleDateString("id-ID")}</Td>
                     <Td>{r.jamKonsul}</Td>
+                    <Td>{r.noWhatsapp}</Td>
                     <Td className="max-w-xs truncate">{r.keluhan}</Td>
                     <Td>
                       <select
