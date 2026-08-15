@@ -4,6 +4,56 @@ import AppShell from "../../components/AppShell";
 
 const PEMERIKSAAN_STATUS_OPTIONS = ["Menunggu Pemeriksaan", "Selesai Pemeriksaan"];
 
+// Sama persis dengan preview di halaman Input Pemeriksaan — hasil resmi
+// tetap dihitung ulang di server saat data disimpan.
+function kategoriFatGender(persenFat, jk) {
+  const f = Number(persenFat);
+  if (!f || f <= 0) return "-";
+  if (jk === "L") {
+    if (f < 6) return "Esensial";
+    if (f < 14) return "Atlet";
+    if (f < 18) return "Kebugaran";
+    if (f < 25) return "Rata-rata";
+    return "Obesitas";
+  }
+  if (jk === "P") {
+    if (f < 14) return "Esensial";
+    if (f < 21) return "Atlet";
+    if (f < 25) return "Kebugaran";
+    if (f < 32) return "Rata-rata";
+    return "Obesitas";
+  }
+  return "-";
+}
+function keteranganFat(f) {
+  f = Number(f);
+  if (!f || f <= 0) return "-";
+  if (f >= 1 && f < 13) return "Normal";
+  if (f >= 13 && f < 15) return "Sedang";
+  if (f >= 15 && f <= 20) return "Tinggi";
+  if (f > 20) return "Obesitas";
+  return "-";
+}
+function keteranganVicFat(v) {
+  v = Number(v);
+  if (!v || v <= 0) return "-";
+  if (v >= 1 && v < 13) return "Normal";
+  if (v >= 13 && v < 15) return "Sedang";
+  if (v >= 15 && v <= 20) return "Tinggi";
+  if (v > 20) return "Obesitas";
+  return "-";
+}
+function keteranganBmi(b) {
+  b = Number(b);
+  if (!b || b <= 0) return "-";
+  if (b < 18.5) return "Underweight";
+  if (b < 25) return "Normal";
+  if (b < 30) return "Overweight";
+  if (b < 35) return "Obesitas 1";
+  if (b < 40) return "Obesitas 2";
+  return "Obesitas 3";
+}
+
 export default function RekapPage() {
   const [perusahaanList, setPerusahaanList] = useState([]);
   const [filters, setFilters] = useState({ kantin: "", perusahaanId: "", q: "", from: "", to: "", status: "" });
@@ -368,6 +418,21 @@ function EditModal({ row, perusahaanList, onClose, onSaved }) {
           <LabeledInput label="Kalori" type="number" value={form.kalori || ""} onChange={(v) => update("kalori", v)} />
           <LabeledInput label="BMI" type="number" value={form.bmi} onChange={(v) => update("bmi", v)} />
         </div>
+
+        <div className="mt-4 p-3 rounded-lg" style={{ background: "var(--surface-hover)" }}>
+          <div className="text-xs font-bold tracking-wider mb-3" style={{ color: "var(--primary)" }}>
+            RESULT (OTOMATIS)
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <ReadOnly label="Kategori %Fat (Gender)" value={kategoriFatGender(form.persenFat, form.jenisKelamin)} />
+            <ReadOnly label="Keterangan %Fat" value={keteranganFat(form.persenFat)} />
+            <ReadOnly label="Keterangan Vic Fat" value={keteranganVicFat(form.vicFat)} />
+            <ReadOnly label="Keterangan BMI" value={keteranganBmi(form.bmi)} />
+          </div>
+          <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
+            Preview di atas dihitung ulang secara resmi di server saat data disimpan.
+          </p>
+        </div>
         <div className="mt-3">
           <label className="text-sm block mb-1">Tindak Lanjut</label>
           <textarea
@@ -400,6 +465,16 @@ function LabeledInput({ label, ...props }) {
     <div>
       <label className="text-sm block mb-1">{label}</label>
       <input className="input-field" {...props} onChange={(e) => props.onChange(e.target.value)} />
+    </div>
+  );
+}
+function ReadOnly({ label, value }) {
+  return (
+    <div>
+      <label className="text-sm block mb-1">{label}</label>
+      <div className="input-field" style={{ background: "var(--surface)", color: "var(--primary)", fontWeight: 600 }}>
+        {value}
+      </div>
     </div>
   );
 }
