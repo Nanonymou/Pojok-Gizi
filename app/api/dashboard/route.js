@@ -23,16 +23,24 @@ export async function GET(req) {
     where.tanggal = { gte: start, lte: end };
   }
 
-  const rows = await prisma.pemeriksaanGizi.findMany({
-    where,
-    select: {
-      kantin: true,
-      jenisKelamin: true,
-      kategoriFatGender: true,
-      keteranganVicFat: true,
-      keteranganBmi: true,
-    },
-  });
+  let rows;
+  try {
+    rows = await prisma.pemeriksaanGizi.findMany({
+      where,
+      select: {
+        kantin: true,
+        jenisKelamin: true,
+        kategoriFatGender: true,
+        keteranganVicFat: true,
+        keteranganBmi: true,
+      },
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: "Gagal memuat data dashboard.", detail: e.message },
+      { status: 500 }
+    );
+  }
 
   const kpi = {
     total: rows.length,
