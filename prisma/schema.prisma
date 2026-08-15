@@ -27,25 +27,36 @@ model MasterPerusahaan {
 model PemeriksaanGizi {
   id                 String   @id @default(cuid())
   tanggal            DateTime
-  noRm               String
+  // No. RM diisi belakangan lewat form pemeriksaan (bisa null selagi masih
+  // "Menunggu Pemeriksaan"), tapi begitu terisi untuk seorang karyawan
+  // (dikaitkan by nama + ID/NIK), nilai itu di-lock (read-only) di entri lain.
+  noRm               String?
   namaKaryawan       String
   nikOrId            String
   perusahaanId       String
   perusahaan         MasterPerusahaan @relation(fields: [perusahaanId], references: [id])
   kantin             String   // "Mahakam" | "Belayan"
-  jenisKelamin       String   // "L" | "P"
+  noWhatsapp         String?  // info kontak, diisi otomatis dari request gizi
+  // Field di bawah ini WAJIB diisi saat pemeriksaan (lewat tombol Edit), tapi
+  // opsional saat entri pertama kali dibuat otomatis dari Request Gizi.
+  jenisKelamin       String?  // "L" | "P"
   usia               Int
-  beratBadan         Float
-  tinggiBadan        Float
-  persenFat          Float
-  kategoriFatGender  String
-  keteranganFat      String
-  vicFat             Float
-  keteranganVicFat   String
+  beratBadan         Float?
+  tinggiBadan        Float?
+  persenFat          Float?
+  kategoriFatGender  String?
+  keteranganFat      String?
+  vicFat             Float?
+  keteranganVicFat   String?
   kalori             Float?
-  bmi                Float
-  keteranganBmi      String
+  bmi                Float?
+  keteranganBmi      String?
   tindakLanjut       String?
+  // "Menunggu Pemeriksaan" -> otomatis dari Request Gizi, belum lengkap.
+  // "Selesai Pemeriksaan"  -> sudah dilengkapi lewat form pemeriksaan.
+  status             String   @default("Menunggu Pemeriksaan")
+  requestGiziId      String?  @unique
+  requestGizi        RequestGizi? @relation(fields: [requestGiziId], references: [id])
   createdBy          String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -53,6 +64,7 @@ model PemeriksaanGizi {
   @@index([tanggal])
   @@index([kantin])
   @@index([perusahaanId])
+  @@index([status])
 }
 
 model RequestGizi {
@@ -62,10 +74,13 @@ model RequestGizi {
   nikOrId        String
   perusahaanId   String
   perusahaan     MasterPerusahaan @relation(fields: [perusahaanId], references: [id])
+  kantin         String   // "Mahakam" | "Belayan" -> menentukan hari konsul
   hariKonsul     DateTime
   jamKonsul      String
+  noWhatsapp     String
   keluhan        String?
   status         String   @default("Baru") // Baru | Ditindaklanjuti | Selesai
+  pemeriksaan    PemeriksaanGizi?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
