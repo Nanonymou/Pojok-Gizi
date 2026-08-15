@@ -2,9 +2,11 @@
 import { useEffect, useState, useCallback } from "react";
 import AppShell from "../../components/AppShell";
 
+const PEMERIKSAAN_STATUS_OPTIONS = ["Menunggu Pemeriksaan", "Selesai Pemeriksaan"];
+
 export default function RekapPage() {
   const [perusahaanList, setPerusahaanList] = useState([]);
-  const [filters, setFilters] = useState({ kantin: "", perusahaanId: "", q: "", from: "", to: "" });
+  const [filters, setFilters] = useState({ kantin: "", perusahaanId: "", q: "", from: "", to: "", status: "" });
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ items: [], total: 0, pageSize: 25 });
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,7 @@ export default function RekapPage() {
     if (filters.kantin) params.set("kantin", filters.kantin);
     if (filters.perusahaanId) params.set("perusahaanId", filters.perusahaanId);
     if (filters.q) params.set("q", filters.q);
+    if (filters.status) params.set("status", filters.status);
     if (filters.from) params.set("from", filters.from);
     if (filters.to) params.set("to", filters.to);
     const res = await fetch(`/api/pemeriksaan?${params.toString()}`);
@@ -69,6 +72,26 @@ export default function RekapPage() {
             <option value="">Semua</option>
             <option value="Mahakam">Mahakam</option>
             <option value="Belayan">Belayan</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs block mb-1" style={{ color: "var(--muted)" }}>
+            Status
+          </label>
+          <select
+            className="input-field"
+            value={filters.status}
+            onChange={(e) => {
+              setPage(1);
+              setFilters((f) => ({ ...f, status: e.target.value }));
+            }}
+          >
+            <option value="">Semua</option>
+            {PEMERIKSAAN_STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </div>
         <div>
@@ -143,6 +166,8 @@ export default function RekapPage() {
                 <Th>Vic Fat</Th>
                 <Th>BMI</Th>
                 <Th>Status Gizi</Th>
+                <Th>No. WhatsApp</Th>
+                <Th>Status</Th>
                 <Th></Th>
               </tr>
             </thead>
@@ -150,16 +175,20 @@ export default function RekapPage() {
               {result.items.map((row) => (
                 <tr key={row.id} className="border-t" style={{ borderColor: "var(--border)" }}>
                   <Td>{new Date(row.tanggal).toLocaleDateString("id-ID")}</Td>
-                  <Td>{row.noRm}</Td>
+                  <Td>{row.noRm || "-"}</Td>
                   <Td>{row.namaKaryawan}</Td>
                   <Td>{row.perusahaan?.nama}</Td>
                   <Td>{row.kantin}</Td>
-                  <Td>{row.jenisKelamin}</Td>
-                  <Td>{row.persenFat}</Td>
-                  <Td>{row.vicFat}</Td>
-                  <Td>{row.bmi}</Td>
+                  <Td>{row.jenisKelamin || "-"}</Td>
+                  <Td>{row.persenFat ?? "-"}</Td>
+                  <Td>{row.vicFat ?? "-"}</Td>
+                  <Td>{row.bmi ?? "-"}</Td>
                   <Td>
-                    <Badge status={row.keteranganBmi} />
+                    <Badge status={row.keteranganBmi || "-"} />
+                  </Td>
+                  <Td>{row.noWhatsapp || "-"}</Td>
+                  <Td>
+                    <StatusBadge status={row.status} />
                   </Td>
                   <Td>
                     <button className="btn-ghost text-xs py-1" onClick={() => setEditing(row)}>
@@ -224,15 +253,43 @@ function Th({ children }) {
 function Td({ children }) {
   return <td className="px-3 py-2 whitespace-nowrap">{children}</td>;
 }
+function StatusBadge({ status }) {
+  const isDone = status === "Selesai Pemeriksaan";
+  return (
+    <span className="badge" style={{ color: isDone ? "var(--success)" : "var(--warning)" }}>
+      {status}
+    </span>
+  );
+}
 
 function EditModal({ row, perusahaanList, onClose, onSaved }) {
   const [form, setForm] = useState({
     ...row,
     tanggal: new Date(row.tanggal).toISOString().slice(0, 10),
     perusahaanId: row.perusahaanId,
+    kantin: row.kantin || "",
+    jenisKelamin: row.jenisKelamin || "",
   });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [lockedNoRm, setLockedNoRm] = useState(null);
+
+  // No. RM sudah pernah terdaftar untuk karyawan ini (by nama + NIK/ID)? Kalau
+  // ya, field No. RM dikunci (read-only) supaya tidak terjadi duplikasi.
+  useEffect(() => {
+    if (!form.namaKaryawan || !form.nikOrId) return;
+    const params = new URLSearchParams({ nama: form.namaKaryawan, nikOrId: form.nikOrId });
+    fetch(`/api/pemeriksaan/lookup-rm?${params.toString()}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.locked && d.noRm) {
+          setLockedNoRm(d.noRm);
+          setForm((f) => (f.noRm ? f : { ...f, noRm: d.noRm }));
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.namaKaryawan, form.nikOrId]);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -258,12 +315,27 @@ function EditModal({ row, perusahaanList, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
       <div className="card p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="font-semibold mb-3">Edit Data Pemeriksaan</div>
+        <div className="font-semibold mb-1">Edit Data Pemeriksaan</div>
+        <div className="mb-3">
+          <StatusBadge status={form.status || "Menunggu Pemeriksaan"} />
+        </div>
         <div className="grid sm:grid-cols-2 gap-3">
           <LabeledInput label="Tanggal" type="date" value={form.tanggal} onChange={(v) => update("tanggal", v)} />
-          <LabeledInput label="No RM" value={form.noRm} onChange={(v) => update("noRm", v)} />
+          <div>
+            <label className="text-sm block mb-1">
+              No. Rekam Medis {lockedNoRm && <span style={{ color: "var(--muted)" }}>(terkunci)</span>}
+            </label>
+            <input
+              className="input-field"
+              value={form.noRm || ""}
+              onChange={(e) => update("noRm", e.target.value)}
+              readOnly={Boolean(lockedNoRm)}
+              style={lockedNoRm ? { background: "var(--surface-hover)" } : undefined}
+            />
+          </div>
           <LabeledInput label="Nama" value={form.namaKaryawan} onChange={(v) => update("namaKaryawan", v)} />
           <LabeledInput label="NIK/ID" value={form.nikOrId} onChange={(v) => update("nikOrId", v)} />
+          <LabeledInput label="No. WhatsApp" value={form.noWhatsapp || ""} onChange={(v) => update("noWhatsapp", v)} />
           <div>
             <label className="text-sm block mb-1">Perusahaan</label>
             <select className="input-field" value={form.perusahaanId} onChange={(e) => update("perusahaanId", e.target.value)}>
