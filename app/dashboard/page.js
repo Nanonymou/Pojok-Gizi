@@ -123,6 +123,7 @@ export default function DashboardPage() {
                 <tr className="text-left" style={{ background: "var(--surface-hover)" }}>
                   <Th>Nama</Th>
                   <Th>Umur</Th>
+                  <Th>JK</Th>
                   <Th>Perusahaan</Th>
                   <Th>Kantin</Th>
                   <Th>Hari</Th>
@@ -137,6 +138,7 @@ export default function DashboardPage() {
                   <tr key={r.id} className="border-t" style={{ borderColor: "var(--border)" }}>
                     <Td>{r.nama}</Td>
                     <Td>{r.umur}</Td>
+                    <Td>{r.jenisKelamin === "L" ? "Laki-laki" : r.jenisKelamin === "P" ? "Perempuan" : "-"}</Td>
                     <Td>{r.perusahaan?.nama}</Td>
                     <Td>{r.kantin}</Td>
                     <Td>{new Date(r.hariKonsul).toLocaleDateString("id-ID")}</Td>

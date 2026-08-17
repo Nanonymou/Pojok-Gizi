@@ -71,6 +71,9 @@ model RequestGizi {
   id             String   @id @default(cuid())
   nama           String
   umur           Int
+  // Nullable karena data lama (sebelum field ini ada) tidak punya nilai;
+  // untuk request BARU tetap wajib diisi ("L" | "P") lewat validasi di route POST-nya.
+  jenisKelamin   String?  // "L" | "P"
   nikOrId        String
   perusahaanId   String
   perusahaan     MasterPerusahaan @relation(fields: [perusahaanId], references: [id])
