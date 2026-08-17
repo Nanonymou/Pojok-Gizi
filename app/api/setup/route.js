@@ -109,6 +109,7 @@ async function handle(req) {
         "kantin" TEXT NOT NULL,
         "hariKonsul" TIMESTAMP(3) NOT NULL,
         "jamKonsul" TEXT NOT NULL,
+        "jenisKelamin" TEXT,
         "noWhatsapp" TEXT,
         "keluhan" TEXT,
         "status" TEXT NOT NULL DEFAULT 'Baru',
@@ -153,7 +154,8 @@ async function handle(req) {
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "RequestGizi"
         ADD COLUMN IF NOT EXISTS "kantin" TEXT NOT NULL DEFAULT 'Mahakam',
-        ADD COLUMN IF NOT EXISTS "noWhatsapp" TEXT;
+        ADD COLUMN IF NOT EXISTS "noWhatsapp" TEXT,
+        ADD COLUMN IF NOT EXISTS "jenisKelamin" TEXT;
     `);
     // Kolom "kantin" di atas dikasih DEFAULT sementara ('Mahakam') supaya ALTER
     // tidak gagal pada baris lama yang belum punya nilai. Setelah kolom ada,

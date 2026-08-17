@@ -38,6 +38,18 @@
   --chart-belayan: #7C3AED;
 }
 
+:root {
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 30px -12px rgba(15, 23, 42, 0.25);
+  --shadow-lg: 0 24px 60px -20px rgba(15, 23, 42, 0.35);
+  --ring: 0 0 0 3px var(--primary-soft);
+}
+.dark {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 16px 40px -18px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+}
+
 * {
   border-color: var(--border);
 }
@@ -47,54 +59,72 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   transition: background-color 200ms ease, color 200ms ease;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .card {
   background-color: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .input-field {
   background-color: var(--surface);
   border: 1px solid var(--border);
   color: var(--foreground);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  border-radius: 0.65rem;
+  padding: 0.6rem 0.85rem;
   width: 100%;
   outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.input-field:hover {
+  border-color: var(--primary);
 }
 
 .input-field:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-soft);
+  box-shadow: var(--ring);
 }
 
 .btn-primary {
-  background-color: var(--primary);
-  color: #05070D;
+  position: relative;
+  background-image: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #ffffff;
   font-weight: 600;
-  border-radius: 0.5rem;
-  padding: 0.6rem 1.2rem;
-  transition: filter 150ms ease;
+  border-radius: 0.65rem;
+  padding: 0.7rem 1.3rem;
+  box-shadow: 0 8px 20px -8px var(--primary);
+  transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
 }
-.btn-primary:hover {
-  filter: brightness(1.08);
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -8px var(--primary);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-ghost {
   background-color: transparent;
   border: 1px solid var(--border);
   color: var(--foreground);
-  border-radius: 0.5rem;
+  border-radius: 0.65rem;
   padding: 0.5rem 1rem;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 .btn-ghost:hover {
   background-color: var(--surface-hover);
+  border-color: var(--primary);
 }
 
 .badge {
@@ -105,4 +135,54 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   border: 1px solid var(--border);
+}
+
+/* Segmented control (dipakai untuk pemilihan Jenis Kelamin di Request Gizi) */
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.segmented-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 160ms ease;
+  user-select: none;
+}
+.segmented-option:hover {
+  border-color: var(--primary);
+  color: var(--foreground);
+}
+.segmented-option[data-active="true"] {
+  border-color: transparent;
+  color: #ffffff;
+  background-image: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 10px 24px -12px var(--primary);
+  transform: translateY(-1px);
+}
+
+/* Animasi lembut untuk kartu/konten yang muncul */
+@keyframes floatIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: floatIn 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Header bergaya "brand" dengan garis gradien */
+.brand-gradient-text {
+  background-image: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
