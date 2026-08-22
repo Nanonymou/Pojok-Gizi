@@ -21,6 +21,9 @@ export default function DashboardPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     fetch("/api/master-perusahaan")
@@ -70,6 +73,23 @@ export default function DashboardPage() {
       body: JSON.stringify({ status }),
     });
     load();
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch(`/api/request-gizi/${deleteTarget.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Gagal menghapus data");
+      setDeleteTarget(null);
+      load();
+    } catch (e) {
+      setDeleteError(e.message || "Gagal menghapus data");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -131,6 +151,7 @@ export default function DashboardPage() {
                   <Th>No. WhatsApp</Th>
                   <Th>Keluhan</Th>
                   <Th>Status</Th>
+                  <Th>Aksi</Th>
                 </tr>
               </thead>
               <tbody>
@@ -158,6 +179,19 @@ export default function DashboardPage() {
                         ))}
                       </select>
                     </Td>
+                    <Td>
+                      <button
+                        className="btn-ghost text-xs py-1"
+                        style={{ color: "var(--danger)", borderColor: "var(--danger)" }}
+                        onClick={() => {
+                          setDeleteError("");
+                          setDeleteTarget(r);
+                        }}
+                        title="Hapus data karyawan ini (termasuk data pemeriksaan)"
+                      >
+                        Hapus
+                      </button>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
@@ -165,7 +199,69 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          target={deleteTarget}
+          deleting={deleting}
+          error={deleteError}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </AppShell>
+  );
+}
+
+function ConfirmDeleteModal({ target, deleting, error, onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)" }}
+    >
+      <div className="card p-6 w-full max-w-md animate-in">
+        <div
+          className="mx-auto flex items-center justify-center rounded-full mb-3"
+          style={{ width: 52, height: 52, background: "rgba(239,68,68,0.12)" }}
+        >
+          <span className="text-2xl" style={{ color: "var(--danger)" }} aria-hidden>
+            🗑️
+          </span>
+        </div>
+        <div className="text-center font-bold text-lg mb-1">Hapus Data Karyawan?</div>
+        <p className="text-sm text-center" style={{ color: "var(--muted)" }}>
+          Anda akan menghapus permanen data{" "}
+          <span className="font-semibold" style={{ color: "var(--foreground)" }}>
+            {target.nama}
+          </span>{" "}
+          ({target.perusahaan?.nama || "-"}), termasuk data pemeriksaan gizi yang terkait. Tindakan ini{" "}
+          <span style={{ color: "var(--danger)", fontWeight: 600 }}>tidak dapat dibatalkan</span>.
+        </p>
+
+        {error && (
+          <div
+            className="text-sm mt-3 rounded-lg px-3 py-2 text-center"
+            style={{ color: "var(--danger)", background: "rgba(239,68,68,0.1)" }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2 justify-center mt-5">
+          <button className="btn-ghost" onClick={onCancel} disabled={deleting}>
+            Batal
+          </button>
+          <button
+            className="btn-primary"
+            style={{ backgroundImage: "linear-gradient(135deg, var(--danger), #b91c1c)", boxShadow: "none" }}
+            onClick={onConfirm}
+            disabled={deleting}
+          >
+            {deleting ? "Menghapus..." : "Ya, Hapus Permanen"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
